@@ -17,12 +17,12 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, pdo_sqlite, intl, zip, bcmath
           coverage: none
-      - name: Validate Composer configuration
-        working-directory: backend
-        run: composer validate --no-check-publish
       - name: Install PHP dependencies
         working-directory: backend
         run: composer install --no-interaction --prefer-dist
+      - name: Validate Composer configuration
+        working-directory: backend
+        run: composer validate --no-check-publish
       - name: Run Laravel tests
         working-directory: backend
         run: php artisan test
