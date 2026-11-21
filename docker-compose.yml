@@ -1,0 +1,75 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: zonewifi
+      DB_USERNAME: zonewifi
+      DB_PASSWORD: change_me_local
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [zonewifi]
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./backend:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [app]
+    networks: [zonewifi]
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: zonewifi
+      POSTGRES_USER: zonewifi
+      POSTGRES_PASSWORD: change_me_local
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - zonewifi_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zonewifi -d zonewifi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [zonewifi]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - zonewifi_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [zonewifi]
+
+volumes:
+  zonewifi_pgdata:
+  zonewifi_redisdata:
+
+networks:
+  zonewifi:
+    driver: bridge
