@@ -1,0 +1,28 @@
+name: ZoneWifi CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, intl, zip, bcmath
+          coverage: none
+      - name: Validate Composer configuration
+        working-directory: backend
+        run: composer validate --no-check-publish
+      - name: Install PHP dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist
+      - name: Run Laravel tests
+        working-directory: backend
+        run: php artisan test
