@@ -16,7 +16,7 @@
         <div class="sidebar-bottom"><span class="status-dot"></span> Socle technique initial <small>v0.1.0</small></div>
     </aside>
     <main class="main">
-        <header class="topbar"><div><span class="eyebrow">ZONEWIFI / APERÇU</span><h1>{{ $pageTitle }}</h1></div><div class="top-tag">ENVIRONNEMENT LOCAL</div></header>
+        <header class="topbar"><div><span class="eyebrow">ZONEWIFI / APERÇU</span><h1>{{ $pageTitle }}</h1></div><div class="top-actions"><span class="top-tag">ENVIRONNEMENT LOCAL</span><span class="user-greeting">{{ auth()->user()->name }}</span><form method="POST" action="{{ route('logout') }}">@csrf<button class="logout-button" type="submit">Déconnexion</button></form></div></header>
         <section class="welcome"><div><span class="eyebrow light">BIENVENUE SUR ZONEWIFI</span><h2>Connectez et gérez<br>vos zones Wi-Fi.</h2><p>Une plateforme centralisée pour administrer vos hotspots, routeurs, clients et ventes.</p></div><div class="welcome-symbol">⌁</div></section>
         <section class="section-head" id="modules"><div><span class="eyebrow">VOTRE ACTIVITÉ</span><h2>Modules de gestion</h2></div><span class="muted">Modules en cours de construction</span></section>
         <section class="module-grid">
