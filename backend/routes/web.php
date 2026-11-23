@@ -18,5 +18,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
     Route::resource('users', UserController::class)->except(['show']);
     Route::post('/routers/{router}/test', [RouterController::class, 'testConnection'])->name('routers.test');
+    Route::get('/routers/{router}/hotspot', [RouterController::class, 'hotspot'])->name('routers.hotspot');
+    Route::post('/routers/{router}/hotspot/disconnect', [RouterController::class, 'disconnect'])->name('routers.disconnect');
     Route::resource('routers', RouterController::class)->except(['show']);
 });
