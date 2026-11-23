@@ -121,6 +121,38 @@ class RouterController extends Controller
         }
     }
 
+    public function createHotspotUser(Router $router, Request $request, RouterOsApiClient $client): RedirectResponse
+    {
+        $this->authorizeManager();
+        $this->sameCompany($router);
+        $data = $request->validate([
+            'hotspot_username' => ['required', 'string', 'max:64', 'regex:/^[a-zA-Z0-9._-]+$/'],
+            'hotspot_password' => ['required', 'string', 'min:4', 'max:64'],
+            'profile' => ['required', 'string', 'max:64'],
+        ]);
+        try {
+            $client->addHotspotUser($router->host, (int) $router->api_port, $router->username, $router->password_encrypted, $data['hotspot_username'], $data['hotspot_password'], $data['profile']);
+            return back()->with('status', 'Compte Hotspot créé sur le routeur.');
+        } catch (Throwable $exception) {
+            report($exception);
+            return back()->withErrors(['hotspot' => 'Création impossible : '.$exception->getMessage()]);
+        }
+    }
+
+    public function deleteHotspotUser(Router $router, Request $request, RouterOsApiClient $client): RedirectResponse
+    {
+        $this->authorizeManager();
+        $this->sameCompany($router);
+        $data = $request->validate(['user_id' => ['required', 'string', 'regex:/^\*[0-9A-Fa-f]+$/']]);
+        try {
+            $client->removeHotspotUser($router->host, (int) $router->api_port, $router->username, $router->password_encrypted, $data['user_id']);
+            return back()->with('status', 'Compte Hotspot supprimé du routeur.');
+        } catch (Throwable $exception) {
+            report($exception);
+            return back()->withErrors(['hotspot' => 'Suppression impossible : '.$exception->getMessage()]);
+        }
+    }
+
     private function validated(Request $request, ?Router $router = null): array
     {
         return $request->validate([
