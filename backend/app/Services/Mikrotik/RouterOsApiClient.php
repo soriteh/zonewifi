@@ -1,50 +1,61 @@
 <?php
 
-namespace App\\Services\\Mikrotik;
+namespace App\Services\Mikrotik;
 
 use RuntimeException;
 
 class RouterOsApiClient
 {
-    /** @return array{identity:string,version:string,board:string,uptime:string} */
     public function inspect(string $host, int $port, string $username, string $password, int $timeout = 5): array
+    {
+        $rows = $this->command($host, $port, $username, $password, '/system/resource/print', [], $timeout);
+        $identity = $this->command($host, $port, $username, $password, '/system/identity/print', [], $timeout);
+        $resource = $rows[0] ?? [];
+        return [
+            'identity' => $identity[0]['name'] ?? $host,
+            'version' => $resource['version'] ?? 'Inconnue',
+            'board' => $resource['board-name'] ?? 'Inconnu',
+            'uptime' => $resource['uptime'] ?? 'Inconnu',
+        ];
+    }
+
+    public function activeHotspotUsers(string $host, int $port, string $username, string $password): array
+    {
+        return $this->command($host, $port, $username, $password, '/ip/hotspot/active/print');
+    }
+
+    public function hotspotUsers(string $host, int $port, string $username, string $password): array
+    {
+        return $this->command($host, $port, $username, $password, '/ip/hotspot/user/print');
+    }
+
+    public function hotspotProfiles(string $host, int $port, string $username, string $password): array
+    {
+        return $this->command($host, $port, $username, $password, '/ip/hotspot/user/profile/print');
+    }
+
+    public function disconnectHotspotUser(string $host, int $port, string $username, string $password, string $sessionId): void
+    {
+        if (!preg_match('/^\*[0-9A-Fa-f]+$/', $sessionId)) {
+            throw new RuntimeException('Identifiant de session RouterOS invalide.');
+        }
+        $this->command($host, $port, $username, $password, '/ip/hotspot/active/remove', ['=.id='.$sessionId]);
+    }
+
+    private function command(string $host, int $port, string $username, string $password, string $command, array $arguments = [], int $timeout = 7): array
     {
         $errno = 0;
         $error = '';
-        $socket = @stream_socket_client(
-            sprintf('tcp://%s:%d', $host, $port),
-            $errno,
-            $error,
-            $timeout,
-            STREAM_CLIENT_CONNECT
-        );
-
+        $socket = @stream_socket_client(sprintf('tcp://%s:%d', $host, $port), $errno, $error, $timeout, STREAM_CLIENT_CONNECT);
         if (!is_resource($socket)) {
-            throw new RuntimeException("Connexion impossible au routeur ({$error}). Vérifiez l’adresse, le port et l’accès réseau.");
+            throw new RuntimeException("Connexion impossible au routeur ({$error}).");
         }
-
         stream_set_timeout($socket, $timeout);
         try {
             $this->writeSentence($socket, ['/login', '=name='.$username, '=password='.$password]);
-            $login = $this->readReply($socket);
-            if (!$this->hasDone($login)) {
-                throw new RuntimeException('Authentification MikroTik refusée. Vérifiez les identifiants et les droits API.');
-            }
-
-            $this->writeSentence($socket, ['/system/identity/print']);
-            $identityReply = $this->readReply($socket);
-            $this->writeSentence($socket, ['/system/resource/print']);
-            $resourceReply = $this->readReply($socket);
-
-            $identity = $this->firstAttributes($identityReply);
-            $resource = $this->firstAttributes($resourceReply);
-
-            return [
-                'identity' => $identity['name'] ?? $host,
-                'version' => $resource['version'] ?? 'Inconnue',
-                'board' => $resource['board-name'] ?? 'Inconnu',
-                'uptime' => $resource['uptime'] ?? 'Inconnu',
-            ];
+            $this->readReply($socket);
+            $this->writeSentence($socket, array_merge([$command], $arguments));
+            return $this->readReply($socket);
         } finally {
             fclose($socket);
         }
@@ -61,75 +72,48 @@ class RouterOsApiClient
 
     private function readReply($socket): array
     {
-        $sentences = [];
+        $rows = [];
         while (true) {
             $sentence = [];
             while (true) {
                 $length = $this->readLength($socket);
-                if ($length === 0) {
-                    break;
-                }
+                if ($length === 0) break;
                 $sentence[] = $this->readExact($socket, $length);
             }
-            if ($sentence === []) {
+            if ($sentence === []) continue;
+            $type = array_shift($sentence);
+            if ($type === '!re') {
+                $row = [];
+                foreach ($sentence as $word) {
+                    if (str_starts_with($word, '=') && str_contains(substr($word, 1), '=')) {
+                        [$key, $value] = explode('=', substr($word, 1), 2);
+                        $row[$key] = $value;
+                    }
+                }
+                $rows[] = $row;
                 continue;
             }
-            $sentences[] = $sentence;
-            $type = $sentence[0];
-            if ($type === '!done' || $type === '!trap' || $type === '!fatal') {
-                if ($type !== '!done') {
-                    $attributes = $this->firstAttributes([$sentence]);
-                    throw new RuntimeException($attributes['message'] ?? 'Erreur retournée par RouterOS.');
+            if ($type === '!done') return $rows;
+            if ($type === '!trap' || $type === '!fatal') {
+                $attributes = [];
+                foreach ($sentence as $word) {
+                    if (str_starts_with($word, '=') && str_contains(substr($word, 1), '=')) {
+                        [$key, $value] = explode('=', substr($word, 1), 2);
+                        $attributes[$key] = $value;
+                    }
                 }
-                return $sentences;
+                throw new RuntimeException($attributes['message'] ?? 'Erreur retournée par RouterOS.');
             }
         }
-    }
-
-    private function firstAttributes(array $sentences): array
-    {
-        foreach ($sentences as $sentence) {
-            if (($sentence[0] ?? '') !== '!re') {
-                continue;
-            }
-            $attributes = [];
-            foreach (array_slice($sentence, 1) as $word) {
-                if (str_starts_with($word, '=') && str_contains(substr($word, 1), '=')) {
-                    [$key, $value] = explode('=', substr($word, 1), 2);
-                    $attributes[$key] = $value;
-                }
-            }
-            return $attributes;
-        }
-        return [];
-    }
-
-    private function hasDone(array $reply): bool
-    {
-        foreach ($reply as $sentence) {
-            if (($sentence[0] ?? '') === '!done') {
-                return true;
-            }
-        }
-        return false;
     }
 
     private function writeLength($socket, int $length): void
     {
-        if ($length < 0x80) {
-            $encoded = chr($length);
-        } elseif ($length < 0x4000) {
-            $length |= 0x8000;
-            $encoded = chr(($length >> 8) & 0xff).chr($length & 0xff);
-        } elseif ($length < 0x200000) {
-            $length |= 0xC00000;
-            $encoded = chr(($length >> 16) & 0xff).chr(($length >> 8) & 0xff).chr($length & 0xff);
-        } elseif ($length < 0x10000000) {
-            $length |= 0xE0000000;
-            $encoded = chr(($length >> 24) & 0xff).chr(($length >> 16) & 0xff).chr(($length >> 8) & 0xff).chr($length & 0xff);
-        } else {
-            $encoded = chr(0xF0).pack('N', $length);
-        }
+        if ($length < 0x80) $encoded = chr($length);
+        elseif ($length < 0x4000) { $length |= 0x8000; $encoded = chr(($length >> 8) & 0xff).chr($length & 0xff); }
+        elseif ($length < 0x200000) { $length |= 0xC00000; $encoded = chr(($length >> 16) & 0xff).chr(($length >> 8) & 0xff).chr($length & 0xff); }
+        elseif ($length < 0x10000000) { $length |= 0xE0000000; $encoded = chr(($length >> 24) & 0xff).chr(($length >> 16) & 0xff).chr(($length >> 8) & 0xff).chr($length & 0xff); }
+        else $encoded = chr(0xF0).pack('N', $length);
         $this->writeAll($socket, $encoded);
     }
 
@@ -151,7 +135,7 @@ class RouterOsApiClient
             $chunk = fread($socket, $length - strlen($data));
             if ($chunk === false || $chunk === '') {
                 $meta = stream_get_meta_data($socket);
-                throw new RuntimeException(!empty($meta['timed_out']) ? 'Délai de réponse RouterOS dépassé.' : 'Connexion RouterOS interrompue.');
+                throw new RuntimeException(!empty($meta['timed_out']) ? 'Délai RouterOS dépassé.' : 'Connexion RouterOS interrompue.');
             }
             $data .= $chunk;
         }
@@ -163,9 +147,7 @@ class RouterOsApiClient
         $offset = 0;
         while ($offset < strlen($data)) {
             $written = fwrite($socket, substr($data, $offset));
-            if ($written === false || $written === 0) {
-                throw new RuntimeException('Impossible d’envoyer la commande au routeur.');
-            }
+            if ($written === false || $written === 0) throw new RuntimeException('Écriture API RouterOS impossible.');
             $offset += $written;
         }
     }
