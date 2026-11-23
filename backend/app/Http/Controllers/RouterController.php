@@ -1,14 +1,12 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Models\\Router;
-use App\\Services\\Mikrotik\\RouterOsApiClient;
-use Illuminate\\Http\\RedirectResponse;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\Crypt;
-use Illuminate\\Validation\\Rule;
-use Illuminate\\View\\View;
+use App\Models\Router;
+use App\Services\Mikrotik\RouterOsApiClient;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 use Throwable;
 
 class RouterController extends Controller
@@ -21,8 +19,7 @@ class RouterController extends Controller
     public function index(): View
     {
         $this->authorizeManager();
-        $routers = Router::query()->where('company_id', auth()->user()->company_id)
-            ->orderBy('name')->paginate(12);
+        $routers = Router::query()->where('company_id', auth()->user()->company_id)->orderBy('name')->paginate(12);
         return view('routers.index', compact('routers'));
     }
 
@@ -64,9 +61,7 @@ class RouterController extends Controller
         $router->host = $data['host'];
         $router->api_port = $data['api_port'];
         $router->username = $data['username'];
-        if (!empty($data['password'])) {
-            $router->password_encrypted = $data['password'];
-        }
+        if (!empty($data['password'])) $router->password_encrypted = $data['password'];
         $router->status = 'unknown';
         $router->save();
         return redirect()->route('routers.index')->with('status', 'Configuration du routeur mise à jour.');
@@ -86,17 +81,43 @@ class RouterController extends Controller
         $this->sameCompany($router);
         try {
             $info = $client->inspect($router->host, (int) $router->api_port, $router->username, $router->password_encrypted);
-            $router->update([
-                'name' => $router->name,
-                'routeros_version' => $info['version'],
-                'status' => 'online',
-                'last_seen_at' => now(),
-            ]);
+            $router->update(['routeros_version' => $info['version'], 'status' => 'online', 'last_seen_at' => now()]);
             return back()->with('status', 'Connexion réussie : '.$info['identity'].' · RouterOS '.$info['version'].' · '.$info['board'].' · Uptime '.$info['uptime']);
         } catch (Throwable $exception) {
             $router->update(['status' => 'offline']);
             report($exception);
             return back()->withErrors(['connection' => $exception->getMessage()]);
+        }
+    }
+
+    public function hotspot(Router $router, RouterOsApiClient $client): View|RedirectResponse
+    {
+        $this->authorizeManager();
+        $this->sameCompany($router);
+        try {
+            $credentials = [$router->host, (int) $router->api_port, $router->username, $router->password_encrypted];
+            $activeUsers = $client->activeHotspotUsers(...$credentials);
+            $hotspotUsers = $client->hotspotUsers(...$credentials);
+            $profiles = $client->hotspotProfiles(...$credentials);
+            $router->update(['status' => 'online', 'last_seen_at' => now()]);
+            return view('routers.hotspot', compact('router', 'activeUsers', 'hotspotUsers', 'profiles'));
+        } catch (Throwable $exception) {
+            report($exception);
+            return redirect()->route('routers.index')->withErrors(['connection' => 'Impossible de lire le Hotspot : '.$exception->getMessage()]);
+        }
+    }
+
+    public function disconnect(Router $router, Request $request, RouterOsApiClient $client): RedirectResponse
+    {
+        $this->authorizeManager();
+        $this->sameCompany($router);
+        $data = $request->validate(['session_id' => ['required', 'string', 'regex:/^\*[0-9A-Fa-f]+$/']]);
+        try {
+            $client->disconnectHotspotUser($router->host, (int) $router->api_port, $router->username, $router->password_encrypted, $data['session_id']);
+            return back()->with('status', 'Session Hotspot déconnectée.');
+        } catch (Throwable $exception) {
+            report($exception);
+            return back()->withErrors(['connection' => 'Déconnexion impossible : '.$exception->getMessage()]);
         }
     }
 
