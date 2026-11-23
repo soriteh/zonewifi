@@ -13,6 +13,7 @@
         <div class="nav-caption">ESPACE DE GESTION</div>
         <a class="nav-link active" href="{{ route('dashboard') }}">▦ <span>Tableau de bord</span></a>
         <a class="nav-link" href="#modules">⌁ <span>Modules</span></a>
+        @if(in_array(auth()->user()->role, ["admin", "manager"], true))<a class="nav-link" href="{{ route('routers.index') }}">⌁ <span>Routeurs MikroTik</span></a>@endif
         @if(auth()->user()->role === "admin")<a class="nav-link" href="{{ route('users.index') }}">♙ <span>Utilisateurs</span></a>@endif
         <div class="sidebar-bottom"><span class="status-dot"></span> Socle technique initial <small>v0.1.0</small></div>
     </aside>
@@ -53,7 +54,7 @@
         <section class="section-head" id="modules"><div><span class="eyebrow">VOTRE ACTIVITÉ</span><h2>Modules de gestion</h2></div><span class="muted">Modules en cours de construction</span></section>
         <section class="module-grid">
             @foreach ($modules as $module)
-                <article class="module-card"><div class="module-icon">{{ strtoupper(substr($module['label'], 0, 1)) }}</div><h3>{{ $module['label'] }}</h3><p>{{ $module['description'] }}</p><span class="module-state">À développer</span></article>
+                <article class="module-card"><div class="module-icon">{{ strtoupper(substr($module['label'], 0, 1)) }}</div><h3>{{ $module['label'] }}</h3><p>{{ $module['description'] }}</p>@if($module['label'] === 'Routeurs' && in_array(auth()->user()->role, ["admin", "manager"], true))<a class="module-action" href="{{ route('routers.index') }}">Ouvrir le module →</a>@else<span class="module-state">À développer</span>@endif</article>
             @endforeach
         </section>
         <footer>ZoneWifi · Soritech Innov Business · Socle technique initial</footer>
