@@ -13,6 +13,7 @@
         <div class="nav-caption">ESPACE DE GESTION</div>
         <a class="nav-link active" href="{{ route('dashboard') }}">▦ <span>Tableau de bord</span></a>
         <a class="nav-link" href="#modules">⌁ <span>Modules</span></a>
+        @if(auth()->user()->role === "admin")<a class="nav-link" href="{{ route('users.index') }}">♙ <span>Utilisateurs</span></a>@endif
         <div class="sidebar-bottom"><span class="status-dot"></span> Socle technique initial <small>v0.1.0</small></div>
     </aside>
     <main class="main">
