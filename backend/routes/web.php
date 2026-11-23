@@ -20,5 +20,7 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/routers/{router}/test', [RouterController::class, 'testConnection'])->name('routers.test');
     Route::get('/routers/{router}/hotspot', [RouterController::class, 'hotspot'])->name('routers.hotspot');
     Route::post('/routers/{router}/hotspot/disconnect', [RouterController::class, 'disconnect'])->name('routers.disconnect');
+    Route::post('/routers/{router}/hotspot/users', [RouterController::class, 'createHotspotUser'])->name('routers.hotspot.users.store');
+    Route::delete('/routers/{router}/hotspot/users', [RouterController::class, 'deleteHotspotUser'])->name('routers.hotspot.users.destroy');
     Route::resource('routers', RouterController::class)->except(['show']);
 });
