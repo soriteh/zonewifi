@@ -42,6 +42,21 @@ class RouterOsApiClient
         $this->command($host, $port, $username, $password, '/ip/hotspot/active/remove', ['=.id='.$sessionId]);
     }
 
+    public function addHotspotUser(string $host, int $port, string $apiUser, string $apiPassword, string $name, string $userPassword, string $profile): void
+    {
+        $this->command($host, $port, $apiUser, $apiPassword, '/ip/hotspot/user/add', [
+            '=name='.$name, '=password='.$userPassword, '=profile='.$profile,
+        ]);
+    }
+
+    public function removeHotspotUser(string $host, int $port, string $apiUser, string $apiPassword, string $userId): void
+    {
+        if (!preg_match('/^\\*[0-9A-Fa-f]+$/', $userId)) {
+            throw new RuntimeException('Identifiant de compte Hotspot invalide.');
+        }
+        $this->command($host, $port, $apiUser, $apiPassword, '/ip/hotspot/user/remove', ['=.id='.$userId]);
+    }
+
     private function command(string $host, int $port, string $username, string $password, string $command, array $arguments = [], int $timeout = 7): array
     {
         $errno = 0;
