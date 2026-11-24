@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RouterController;
+use App\Http\Controllers\TicketController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -23,4 +24,9 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/routers/{router}/hotspot/users', [RouterController::class, 'createHotspotUser'])->name('routers.hotspot.users.store');
     Route::delete('/routers/{router}/hotspot/users', [RouterController::class, 'deleteHotspotUser'])->name('routers.hotspot.users.destroy');
     Route::resource('routers', RouterController::class)->except(['show']);
+    Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
+    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+    Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
+    Route::get('/tickets/{ticket}/sell', [TicketController::class, 'sell'])->name('tickets.sell');
+    Route::post('/tickets/{ticket}/sell', [TicketController::class, 'storeSale'])->name('tickets.sale.store');
 });
