@@ -28,6 +28,37 @@ services:
         condition: service_healthy
     networks: [zonewifi]
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    working_dir: /var/www/html
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - ./backend:/var/www/html
+      - ./.env:/var/www/html/.env
+      - zonewifi_vendor:/var/www/html/vendor
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: zonewifi
+      DB_USERNAME: zonewifi
+      DB_PASSWORD: change_me_local
+      REDIS_HOST: redis
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      SESSION_DRIVER: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks: [zonewifi]
+
   nginx:
     image: nginx:1.27-alpine
     ports:
