@@ -25,7 +25,8 @@ Route::middleware('auth')->group(function (): void {
     Route::delete('/routers/{router}/hotspot/users', [RouterController::class, 'deleteHotspotUser'])->name('routers.hotspot.users.destroy');
     Route::resource('routers', RouterController::class)->except(['show']);
     Route::get('/tickets', [TicketController::class, 'index'])->name('tickets.index');
-    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');\n    Route::get('/tickets/print', [TicketController::class, 'printAvailable'])->name('tickets.print');
+    Route::get('/tickets/create', [TicketController::class, 'create'])->name('tickets.create');
+    Route::get('/tickets/print', [TicketController::class, 'printAvailable'])->name('tickets.print');
     Route::post('/tickets', [TicketController::class, 'store'])->name('tickets.store');
     Route::get('/tickets/{ticket}/sell', [TicketController::class, 'sell'])->name('tickets.sell');
     Route::post('/tickets/{ticket}/sell', [TicketController::class, 'storeSale'])->name('tickets.sale.store');
