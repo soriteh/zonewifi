@@ -67,18 +67,22 @@ class TicketController extends Controller
 
         $prefix = $data['username_prefix'] ?: 'ZW';
         $generated = 0;
-        for ($i = 0; $i < $data['quantity']; $i++) {
-            $username = $prefix.'-'.Str::upper(Str::random(8));
-            $password = Str::random((int) $data['password_length']);
-            WifiTicket::create([
-                'company_id' => $this->companyId(),
-                'wifi_plan_id' => $plan->id,
-                'username' => $username,
-                'password_encrypted' => $password,
-                'status' => 'available',
-            ]);
-            $generated++;
-        }
+        DB::transaction(function () use ($data, $plan, $prefix, &$generated): void {
+            for ($i = 0; $i < $data['quantity']; $i++) {
+                do {
+                    $username = $prefix.'-'.Str::upper(Str::random(8));
+                } while (WifiTicket::query()->where('company_id', $this->companyId())->where('username', $username)->exists());
+
+                WifiTicket::create([
+                    'company_id' => $this->companyId(),
+                    'wifi_plan_id' => $plan->id,
+                    'username' => $username,
+                    'password_encrypted' => Str::random((int) $data['password_length']),
+                    'status' => 'available',
+                ]);
+                $generated++;
+            }
+        });
 
         return redirect()->route('tickets.index')->with('status', $generated.' ticket(s) généré(s) pour le forfait '.$plan->name.'.');
     }
