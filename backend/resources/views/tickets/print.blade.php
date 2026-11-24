@@ -1,0 +1,6 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Impression tickets Wi-Fi · ZoneWifi</title><link rel="stylesheet" href="{{ asset('css/app.css') }}"></head>
+<body class="ticket-print-body"><div class="print-toolbar"><a class="secondary-link" href="{{ route('tickets.index') }}">← Retour aux tickets</a><button class="primary-button" onclick="window.print()">Imprimer cette page</button></div>
+<header class="print-title"><h1>Tickets Wi-Fi</h1><p>ZoneWifi · {{ now()->format('d/m/Y H:i') }}</p><small>Codes disponibles — {{ $tickets->count() }} ticket(s)</small></header>
+<div class="print-ticket-grid">@forelse($tickets as $ticket)<article class="print-ticket"><strong>{{ $ticket->plan?->name ?? 'Forfait Wi-Fi' }}</strong><div class="print-ticket-credentials"><span>Utilisateur</span><b>{{ $ticket->username }}</b><span>Mot de passe</span><b>{{ $ticket->password_encrypted }}</b></div><small>{{ number_format($ticket->plan?->price ?? 0,0,',',' ') }} {{ $ticket->plan?->currency ?? 'GNF' }} · {{ $ticket->plan?->duration_minutes ?? '—' }} min</small></article>@empty<p>Aucun ticket disponible à imprimer.</p>@endforelse</div>
+</body></html>
