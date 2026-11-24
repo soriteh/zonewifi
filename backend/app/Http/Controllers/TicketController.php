@@ -1,16 +1,15 @@
 <?php
 
-namespace App\\Http\\Controllers;
+namespace App\Http\Controllers;
 
-use App\\Models\\Sale;
-use App\\Models\\WifiPlan;
-use App\\Models\\WifiTicket;
-use Illuminate\\Database\\UniqueConstraintViolationException;
-use Illuminate\\Http\\RedirectResponse;
-use Illuminate\\Http\\Request;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Str;
-use Illuminate\\View\\View;
+use App\Models\Sale;
+use App\Models\WifiPlan;
+use App\Models\WifiTicket;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class TicketController extends Controller
 {
