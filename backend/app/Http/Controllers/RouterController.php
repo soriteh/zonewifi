@@ -131,6 +131,11 @@ class RouterController extends Controller
             'profile' => ['required', 'string', 'max:64'],
         ]);
         try {
+            $profiles = $client->hotspotProfiles($router->host, (int) $router->api_port, $router->username, $router->password_encrypted);
+            $profileNames = array_map(static fn (array $profile): string => (string) ($profile['name'] ?? ''), $profiles);
+            if (!in_array($data['profile'], $profileNames, true)) {
+                return back()->withInput()->withErrors(['profile' => 'Le profil sélectionné n’existe pas sur ce routeur.']);
+            }
             $client->addHotspotUser($router->host, (int) $router->api_port, $router->username, $router->password_encrypted, $data['hotspot_username'], $data['hotspot_password'], $data['profile']);
             return back()->with('status', 'Compte Hotspot créé sur le routeur.');
         } catch (Throwable $exception) {
